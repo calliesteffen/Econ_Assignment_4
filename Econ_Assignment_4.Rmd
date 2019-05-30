@@ -24,11 +24,17 @@ a<-ggplot(abate,aes(x=Abatement, y=MC_A))+ ##Linear
 sectorA<-lm(data=abate, MC_A~Abatement)
 summary(sectorA)
 
-b<-ggplot(abate,aes(x=Abatement, y=MC_B))+ ##NonLinear
+SectorA_Intercept<-sectorA$coefficients[1]
+SectorA_Abatement<-sectorA$coefficients['Abatement']
+
+b<-ggplot(abate,aes(x=Abatement, y=MC_B))+ 
   geom_point()
 
 sectorB<-lm(data =abate, MC_B~Abatement)
 summary(sectorB)
+
+SectorB_Intercept<-sectorB$coefficients[1]
+SectorB_Abatement<-sectorB$coefficients['Abatement']
 
 
 c<-ggplot(abate,aes(x=Abatement, y=MC_C))+ ##Linear
@@ -36,12 +42,33 @@ c<-ggplot(abate,aes(x=Abatement, y=MC_C))+ ##Linear
 sectorC<-lm(data=abate, MC_C~Abatement)
 summary(sectorC)
 
+SectorC_Intercept<-sectorC$coefficients[1]
+SectorC_Abatement<-sectorC$coefficients['Abatement']
 
 d<-ggplot(abate,aes(x=Abatement, y=MC_D))+ ##NonLinear
   geom_point()
 sectorD<-lm(data = abate, MC_D~Abatement)
 summary(sectorD)
 
+SectorD_Intercept<-sectorD$coefficients[1]
+SectorD_Abatement<-sectorD$coefficients['Abatement']
+
+
+
+marginal_graph <- ggplot(abate) +
+  geom_smooth(aes(Abatement,MC_A, color="Sector A"), method=lm,se=FALSE) +
+  geom_smooth(aes(Abatement,MC_B,color=" Sector B"), method=lm, se=FALSE) +
+  geom_smooth(aes(Abatement,MC_C, color="Sector C"), method=lm, se=FALSE) +
+  geom_smooth(aes(Abatement,MC_D, color="Sector D"), method=lm, se=FALSE) +
+  labs(x = "CO2 (Tons)", y = "Cost ($)") +
+  theme_classic()+
+  theme(legend.title = element_blank())
+  
+
+
+##Does it plot LM or jsut columns against each other?
+
+marginal_graph
 
 ```
 
@@ -49,6 +76,51 @@ summary(sectorD)
 2. Using these models and the current level of carbon emissions, derive each sector’s demand curve for carbon emissions. In other words, how much would each sector be willing to pay for the right to pollute the first unit, second unit, etc? Draw these demand curves on a graph. Which sector is willing to pay the most for the first unit of carbon emissions?
 
 ```{r}
+
+
+###Have to find y intercept to find demand curve
+##y=mx+b Solve for y
+##y=slope(abatement)*x(given)+intercept(calculated from summary)
+
+y_a=SectorA_Abatement*180 + SectorA_Intercept
+
+y_b=SectorB_Abatement*200 + SectorB_Intercept
+
+y_c=SectorC_Abatement*220 + SectorC_Intercept
+
+y_d=SectorD_Abatement*300 + SectorD_Intercept
+
+##coefficients for current carbon
+
+a=180
+b=200
+c=220
+d=300
+
+##NOW LETS FIND THE DEMAND CURVES NOW THAT WE HAVE Y
+##DEMAND CURVES ARE "WILLINGNESS TO PAY"
+
+a_demand = function(x) {
+  Demand = (y_a/a)*x + a
+}
+
+b_demand= function(x) {
+  Demand = (y_b/b)*x + b
+}
+
+c_demand = function(x) {
+  Demand = (y_c/c)*x + c
+}
+
+d_demand = function(x) {
+  Demand = (y_d/d)*x + d
+}
+
+
+##graph
+
+
+
 
 ```
 
