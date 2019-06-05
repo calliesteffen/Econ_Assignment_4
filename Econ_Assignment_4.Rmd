@@ -24,6 +24,8 @@ a<-ggplot(abate,aes(x=Abatement, y=MC_A))+ ##Linear
 sectorA<-lm(data=abate, MC_A~Abatement)
 summary(sectorA)
 
+sectorA_fxn=function(x){sectorA$coefficients[2]*x +sectorA$coefficients[1]}
+
 SectorA_Intercept<-sectorA$coefficients[1]
 SectorA_Abatement<-sectorA$coefficients['Abatement']
 
@@ -66,9 +68,11 @@ marginal_graph <- ggplot(abate) +
   
 
 
-##Does it plot LM or jsut columns against each other?
+##Does it plot LM or jsut columns against each other? #### LOOK AT R^2
 
 marginal_graph
+
+
 
 ```
 
@@ -82,13 +86,15 @@ marginal_graph
 ##y=mx+b Solve for y
 ##y=slope(abatement)*x(given)+intercept(calculated from summary)
 
-y_a=SectorA_Abatement*180 + SectorA_Intercept
+y_a=SectorA_Abatement*180 + SectorA_Intercept # (0,95.2) (180,0)
 
-y_b=SectorB_Abatement*200 + SectorB_Intercept
+y_b=SectorB_Abatement*200 + SectorB_Intercept # (0,49.1) (200,0)
 
-y_c=SectorC_Abatement*220 + SectorC_Intercept
+y_c=SectorC_Abatement*220 + SectorC_Intercept #(0,161) (220,0)
 
-y_d=SectorD_Abatement*300 + SectorD_Intercept
+y_d=SectorD_Abatement*300 + SectorD_Intercept #(0,87.7) (300,0)
+
+###Price^
 
 ##coefficients for current carbon
 
@@ -101,31 +107,138 @@ d=300
 ##DEMAND CURVES ARE "WILLINGNESS TO PAY"
 
 a_demand = function(x) {
-  Demand = (y_a/a)*x + a
+  Demand = (-95.2/180)*x + SectorA_Intercept
 }
 
 b_demand= function(x) {
-  Demand = (y_b/b)*x + b
+  Demand = (-49.1/200)*x + SectorB_Intercept
 }
 
 c_demand = function(x) {
-  Demand = (y_c/c)*x + c
+  Demand = (-y_c/c)*x + SectorC_Intercept
 }
 
 d_demand = function(x) {
-  Demand = (y_d/d)*x + d
+  Demand = (-y_d/d)*x + SectorD_Intercept
 }
 
 
-##graph
+
+##graph the demand curves BUT HOW?!
 
 
+graph_functions <- ggplot(data.frame(x=c(0,300), y=c(0,200)), aes(x=x, y=y))+
+  stat_function(fun=a_demand, color="blue")+
+  stat_function(fun=b_demand, color="green")+
+    stat_function(fun=c_demand, color="orange")+
+  stat_function(fun=d_demand, color="pink") +
+  scale_x_continuous(expand = c(0,0), breaks=seq(0,500, by=50)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()
+
+graph_functions
+
+##SECTOR C willing to Pay the MOST!
+
+##is the graph right?
+##how to calculate total cost if its below 0
+##
 
 
 ```
 
 
 3. Now focus on country X (which contains sectors A, B, and C). Assume there are no “co-benefits” from carbon abatement (i.e. that there are no local pollutants that are affected by carbon abatement). Suppose to meet the Paris Accord commitments, country X needs to cut all carbon emissions in half. For each of the policy options listed below, derive: (1) the total cost of meeting the target in country X, (2) the cost (or benefit) to each sector, and (3) the tax revenue generated.
+
+A) POLICY A: Cap on carbon. Each sector (A, B, and C) must cut its carbon emissions by 100 tons (thus reducing total emissions from 600 down to 300).
+
 ```{r}
 
+### POLICY OPTION A:
+
+#1) total cost of meeting the target in Country X (sectors A, B, C added together, find each triangle and add up)
+
+SA_CA = function(x){
+  (sectorA$coefficients[2]*x +sectorA$coefficients[1])
+} # carbon tax is $114.04 -- confirm!
+
+SA_CA(114.04) # tells us what? the Q emitted under the tax for sector A?
+
+SB_CA = function(x){
+  (sectorB$coefficients[2]*x +sectorB$coefficients[1])
+}
+SC_CA = function(x){
+  (sectorC$coefficients[2]*x +sectorC$coefficients[1])
+  }
+
+
+#2) The cost OR benefit to each sector (do this part first! each sector)
+
+#??? how can we get acutal numbers for the cost to each sector?
+
+costA = integrate(a_demand, 0, 100)
+costB = integrate(SB_CA, 0, 100)
+costC = integrate(SC_CA, 0, 100)
+country_TC_A = costA$value + costB$value + costC$value  
+
+
 ```
+
+
+B) POlICY B: Tax on carbon. To emit a ton of carbon in country X, you must pay a tax of $t. You will need to find the tax that accomplishes the desired reduction.
+
+```{r}
+
+### POLICY OPTION B:
+
+##tax on carbon by using aggregate demand 
+
+#aggregate abatement curve
+
+
+agg_step1<- (1/SectorA_Abatement+1/SectorB_Abatement+1/SectorC_Abatement)/3
+new_intercept<- ((sectorA$coefficients[1]/-sectorA$coefficients[2])-SectorB_Intercept/SectorB_Abatement +SectorC_Intercept/-SectorC_Abatement)/3
+agg_abatement <- function(x){(x+(-new_intercept))/agg_step1}
+price_carbon <- function(x){agg_abatement(300)}
+
+price_carbon(300) # carbon tax is $114.04 -- confirm!
+
+#plug (300) into agg abatement to get price: 114.0445
+
+#1) total cost of meeting the target in Country X  # tells us what? the Q emitted under the tax for sector A?
+
+#?????
+
+
+#2) The cost OR benefit to each sector
+
+# Find the intersection of A curve & price of carbon
+intersectA<-curve_intersect(price_carbon, ??????? , empirical = FALSE, domain=c(0,300)) 
+
+# Find the intersection of A curve & price of carbon
+intersectB<-curve_intersect(price_carbon(), ???, empirical = FALSE, domain=c(0,300)) 
+
+# Find the intersection of A curve & price of carbon
+intersectC<-curve_intersect(price_carbon, ????, empirical = FALSE, domain=c(0,300)) 
+
+#3) The tax revenue generated
+
+```
+
+C) POLICY C: Cap and trade. Each sector (A, B, C) is allocated carbon permits equal to their current emissions minus 100 (same as in (a) above), thus achieving the total reduction of 300. Then, these three sectors are allowed to trade with each other. You will need to derive the outcome of that trading.
+
+```{r}
+
+### POLICY OPTION C:
+
+#1) total cost of meeting the target in Country X
+
+#2) The cost OR benefit to each sector
+
+#3) The tax revenue generated
+
+
+
+
+```
+
