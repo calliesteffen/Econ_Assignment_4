@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 abate<-read.csv("HW4.csv")
 library(tidyverse)
 library(ggplot2)
+library(remotes)
+library(reconPlots)
+
 
 ```
 Write down a plausible functional form for the marginal cost of abatement for sector A. Use regression analysis to estimate the parameters of that function. Repeating this for sectors B, C, and D will give you a model of the marginal cost of abatement function for each sector. How well do your models fit the data for each sector? You may need to experiment with different functional forms. Produce a plot of the estimated marginal abatement cost functions in all four sectors (this plot should go in your memo).
@@ -160,9 +163,7 @@ A) POLICY A: Cap on carbon. Each sector (A, B, and C) must cut its carbon emissi
 
 SA_CA = function(x){
   (sectorA$coefficients[2]*x +sectorA$coefficients[1])
-} # carbon tax is $114.04 -- confirm!
-
-SA_CA(114.04) # tells us what? the Q emitted under the tax for sector A?
+} 
 
 SB_CA = function(x){
   (sectorB$coefficients[2]*x +sectorB$coefficients[1])
@@ -174,12 +175,25 @@ SC_CA = function(x){
 
 #2) The cost OR benefit to each sector (do this part first! each sector)
 
-#??? how can we get acutal numbers for the cost to each sector?
+#cost to each sector
+costA = integrate(SA_CA, 0, 100) #2019.762
+costB = integrate(SB_CA, 0, 100) #1925.491
+costC = integrate(SC_CA, 0, 100) #2753.63 
+country_TC_A = costA$value + costB$value + costC$value  #6698.88 TOTAL COST OF ABATING 300 tons
 
-costA = integrate(a_demand, 0, 100)
-costB = integrate(SB_CA, 0, 100)
-costC = integrate(SC_CA, 0, 100)
-country_TC_A = costA$value + costB$value + costC$value  
+##dont forget to calculate the net benefit 
+
+benefitA = integrate(SA_CA, 0, 80)  #1154.336
+benefitB = integrate(SB_CA, 0, 100) #1925.491
+benefitC = integrate(SC_CA, 0, 120) #4244.948
+country_TB_A = benefitA$value + benefitB$value + benefitC$value #7324.77
+
+
+# Net Benefit A   - 865.4259
+#Net Benefit B 0
+#net Benefit C  1491.318
+
+
 
 
 ```
@@ -195,33 +209,77 @@ B) POlICY B: Tax on carbon. To emit a ton of carbon in country X, you must pay a
 
 #aggregate abatement curve
 
+#putting ys in terms of xs for aggregate
+agg_step1<- (1/SectorA_Abatement+1/SectorB_Abatement+1/SectorC_Abatement)
 
-agg_step1<- (1/SectorA_Abatement+1/SectorB_Abatement+1/SectorC_Abatement)/3
-new_intercept<- ((sectorA$coefficients[1]/-sectorA$coefficients[2])-SectorB_Intercept/SectorB_Abatement +SectorC_Intercept/-SectorC_Abatement)/3
+##step two of aggregate to get new intercept of equation
+new_intercept<- ((sectorA$coefficients[1]/-sectorA$coefficients[2])-SectorB_Intercept/SectorB_Abatement +SectorC_Intercept/-SectorC_Abatement)
+
+# aggregate abatement curve
 agg_abatement <- function(x){(x+(-new_intercept))/agg_step1}
+
 price_carbon <- function(x){agg_abatement(300)}
 
-price_carbon(300) # carbon tax is $114.04 -- confirm!
+price_carbon(300) #with tax
 
-#plug (300) into agg abatement to get price: 114.0445
+tax=39.43
+
+#plug (300) into agg abatement to get price of tax:# 39.43
+
 
 #1) total cost of meeting the target in Country X  # tells us what? the Q emitted under the tax for sector A?
-
-#?????
 
 
 #2) The cost OR benefit to each sector
 
 # Find the intersection of A curve & price of carbon
-intersectA<-curve_intersect(price_carbon, ??????? , empirical = FALSE, domain=c(0,300)) 
+intersectA<-curve_intersect(price_carbon,SA_CA, empirical = FALSE, domain=c(0,300)) 
+tax_costA = integrate(SA_CA, 0, intersectA$x) #1282.612
 
-# Find the intersection of A curve & price of carbon
-intersectB<-curve_intersect(price_carbon(), ???, empirical = FALSE, domain=c(0,300)) 
+# Find the intersection of B curve & price of carbon
 
-# Find the intersection of A curve & price of carbon
-intersectC<-curve_intersect(price_carbon, ????, empirical = FALSE, domain=c(0,300)) 
+intersectB<-curve_intersect(price_carbon,SB_CA, empirical = FALSE, domain=c(0,300))
+
+tax_costB = integrate(SB_CA, 0, intersectB$x) #3692.271
+
+
+# Find the intersection of C curve & price of carbon
+intersectC<-curve_intersect(price_carbon,SC_CA, empirical = FALSE, domain=c(0,300)) 
+
+tax_costC = integrate(SC_CA, 0, intersectC$x)
+#904.9294
+
+#total tax
+#5879.812
 
 #3) The tax revenue generated
+
+tax_revenue<-agg_abatement(300)*300
+#11,828
+
+##why is the tax revenue and the total tax of three sectors different? shouldnt they be the same?
+
+
+
+
+
+##GRAPH FOR AGG DEMAND
+
+graph_agg <- ggplot(abate) +
+  marginal_graph <- ggplot(abate) +
+  geom_smooth(aes(Abatement,MC_A, color="Sector A"), method=lm,se=FALSE) +
+  geom_smooth(aes(Abatement,MC_B,color=" Sector B"), method=lm, se=FALSE) +
+  geom_smooth(aes(Abatement,MC_C, color="Sector C"), method=lm, se=FALSE) +
+  geom_smooth(aes(Abatement,MC_D, color="Sector D"), method=lm, se=FALSE) +
+  stat_function(fun=agg_abatement, color="black") +
+  stat_function(fun=price_carbon, color="brown") +
+  scale_x_continuous(expand = c(0,0), breaks=seq(0,500, by=50)) +
+  theme_classic()
+
+graph_agg
+
+
+
 
 ```
 
@@ -229,11 +287,15 @@ C) POLICY C: Cap and trade. Each sector (A, B, C) is allocated carbon permits eq
 
 ```{r}
 
-### POLICY OPTION C:
+### POLICY OPTION C: ### HELP!
 
-#1) total cost of meeting the target in Country X
+#1) Total cost of meeting the target in Country X
 
 #2) The cost OR benefit to each sector
+
+sectA_abate = SA_CA(tax) # $14.1 
+
+
 
 #3) The tax revenue generated
 
