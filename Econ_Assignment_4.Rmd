@@ -164,7 +164,6 @@ A) POLICY A: Cap on carbon. Each sector (A, B, and C) must cut its carbon emissi
 SA_CA = function(x){
   (sectorA$coefficients[2]*x +sectorA$coefficients[1])
 } 
-
 SB_CA = function(x){
   (sectorB$coefficients[2]*x +sectorB$coefficients[1])
 }
@@ -205,18 +204,40 @@ B) POlICY B: Tax on carbon. To emit a ton of carbon in country X, you must pay a
 
 ### POLICY OPTION B:
 
-##tax on carbon by using aggregate demand 
+##rearrange supply curves
 
-#aggregate abatement curve
+A_rearrange <- function(y){(1/sectorA$coefficients[2])*(-sectorA$coefficients[1] + y)}
+B_rearrange <- function(y){(1/sectorB$coefficients[2])*(-sectorB$coefficients[1] + y)}
+C_rearrange <- function(y){(1/sectorC$coefficients[2])*(-sectorC$coefficients[1] + y)}
 
-#putting ys in terms of xs for aggregate
+
+# First find the optimal Q's emitted for each sector:
+
+# Sector A: ##83.34
+
+abate_a<-A_rearrange(tax)
+
+
+#Sector B: ##151.51
+abate_b<-B_rearrange(tax)
+
+#Sector C: ##65.17
+
+abate_c<- C_rearrange(tax)
+
+## Find the tax on carbon by using aggregate demand 
+
+# Calculate the aggregate abatement curve
+
+#Step 1: putting ys in terms of xs for aggregate
 agg_step1<- (1/SectorA_Abatement+1/SectorB_Abatement+1/SectorC_Abatement)
 
-##step two of aggregate to get new intercept of equation
+## Step 2: The aggregate to get new intercept of equation
 new_intercept<- ((sectorA$coefficients[1]/-sectorA$coefficients[2])-SectorB_Intercept/SectorB_Abatement +SectorC_Intercept/-SectorC_Abatement)
 
-# aggregate abatement curve
+# Step 3: Aggregate abatement curve
 agg_abatement <- function(x){(x+(-new_intercept))/agg_step1}
+
 
 price_carbon <- function(x){agg_abatement(300)}
 
@@ -224,62 +245,40 @@ price_carbon(300) #with tax
 
 tax=39.43
 
-#plug (300) into agg abatement to get price of tax:# 39.43
+# Find the carbon tax: plug (300) into agg abatement to get price of tax:# 39.43
 
 
-#1) total cost of meeting the target in Country X  # tells us what? the Q emitted under the tax for sector A?
+#1) Find the TC of meeting the target in Country X  # tells us what? the Q emitted under the tax for sector A?
 
 
-#2) The cost OR benefit to each sector
+#2) Find the cost OR benefit to each sector
 
 # Find the intersection of A curve & price of carbon
-intersectA<-curve_intersect(price_carbon,SA_CA, empirical = FALSE, domain=c(0,300)) 
-tax_costA = integrate(SA_CA, 0, intersectA$x) #1282.612
+intersect_a<-integrate(SA_CA,lower=0,upper=abate_a)
 
-# Find the intersection of B curve & price of carbon
+tax_costA<-intersect_a$value + (a- abate_a)*tax
+##5094.12
 
-intersectB<-curve_intersect(price_carbon,SB_CA, empirical = FALSE, domain=c(0,300))
+intersect_b<-integrate(SB_CA,lower=0,upper=abate_b)
 
-tax_costB = integrate(SB_CA, 0, intersectB$x) #3692.271
+tax_costB<-intersect_b$value + (b- abate_b)*tax
+##5604.80
+
+intersect_c<-integrate(SC_CA,lower=0,upper=abate_c)
+
+tax_costC<-intersect_c$value + (c- abate_c)*tax
+##7009.90
 
 
-# Find the intersection of C curve & price of carbon
-intersectC<-curve_intersect(price_carbon,SC_CA, empirical = FALSE, domain=c(0,300)) 
-
-tax_costC = integrate(SC_CA, 0, intersectC$x)
-#904.9294
-
-#total tax
-#5879.812
 
 #3) The tax revenue generated
+
+total_tax = tax_costA + tax_costB + tax_costC ##17708.81
 
 tax_revenue<-agg_abatement(300)*300
 #11,828
 
-##why is the tax revenue and the total tax of three sectors different? shouldnt they be the same?
-
-
-
-
-
-##GRAPH FOR AGG DEMAND
-
-graph_agg <- ggplot(abate) +
-  marginal_graph <- ggplot(abate) +
-  geom_smooth(aes(Abatement,MC_A, color="Sector A"), method=lm,se=FALSE) +
-  geom_smooth(aes(Abatement,MC_B,color=" Sector B"), method=lm, se=FALSE) +
-  geom_smooth(aes(Abatement,MC_C, color="Sector C"), method=lm, se=FALSE) +
-  geom_smooth(aes(Abatement,MC_D, color="Sector D"), method=lm, se=FALSE) +
-  stat_function(fun=agg_abatement, color="black") +
-  stat_function(fun=price_carbon, color="brown") +
-  scale_x_continuous(expand = c(0,0), breaks=seq(0,500, by=50)) +
-  theme_classic()
-
-graph_agg
-
-
-
+## explain this difference better 
 
 ```
 
@@ -289,15 +288,38 @@ C) POLICY C: Cap and trade. Each sector (A, B, C) is allocated carbon permits eq
 
 ### POLICY OPTION C: ### HELP!
 
-#1) Total cost of meeting the target in Country X
+CAPTRADE_COST_A<- intersect_a$value + (100 - abate_a)*tax
+# 1939.72
 
-#2) The cost OR benefit to each sector
+CAPTRADE_COST_B <- intersect_b$value + (100 - abate_b)*tax
 
-sectA_abate = SA_CA(tax) # $14.1 
+#  1661.80
 
+CAPTRADE_COST_C <- intersect_c$value + (100 - abate_c)*tax
+#  2278.30
+
+Total_Cap_Trade <- CAPTRADE_COST_A + CAPTRADE_COST_B + CAPTRADE_COST_C
+
+#  5879.81
 
 
 #3) The tax revenue generated
+
+##NONE BECAUSE OF CAP AND TRADE
+
+
+
+
+```
+
+#4
+
+```{r}
+##Step 1 find out how much of the 300 they are emitting
+##step 2- find out how much it costs sector D to abate by one unit
+##step 3- find out how much they can sell one ton for
+##step 4- find out if that price is cheaper for country X to buy than its current price
+
 
 
 
